@@ -20,17 +20,18 @@ def test_training_cnn():
                  optim.Adam(fsrcnn.get_model().parameters()),
                  stop.NoCondition(), device)
 
-class SREntrySingleImageGraphCollation:
-    def __call__(self, batch):
-        input_graphs = [entry[0] for entry in batch]
-        input_graphs_size = [g.size for g in input_graphs]
-        output_graphs = [entry[1] for entry in batch]
-        output_graphs_size = [g.size for g in output_graphs]
-        batched_input_graphs = dgl.batch(input_graphs)
-        batched_input_graphs.size = lambda: input_graphs_size
-        batched_output_graphs = dgl.batch(output_graphs)
-        batched_output_graphs.size = lambda: output_graphs_size
-        return batched_input_graphs, batched_output_graphs
+
+def collate_graphs(batch):
+    input_graphs = [entry[0] for entry in batch]
+    input_graphs_size = [g.size for g in input_graphs]
+    output_graphs = [entry[1] for entry in batch]
+    output_graphs_size = [g.size for g in output_graphs]
+    batched_input_graphs = dgl.batch(input_graphs)
+    batched_input_graphs.size = lambda: input_graphs_size
+    batched_output_graphs = dgl.batch(output_graphs)
+    batched_output_graphs.size = lambda: output_graphs_size
+    return batched_input_graphs, batched_output_graphs
+
 
 def test_training_graph():
     device = torch.device("cpu")
@@ -40,7 +41,8 @@ def test_training_graph():
     lr_graphs = [conversion.image_to_graph(image) for image in lr_images]
     hr_graphs = [conversion.image_to_graph(image) for image in hr_images]
 
-    loader = data.DataLoader(list(zip(lr_graphs, hr_graphs)), collate_fn=SREntrySingleImageGraphCollation())
+    loader = data.DataLoader(list(zip(lr_graphs, hr_graphs)),
+                             collate_fn=collate_graphs)
     fsrcnn.train(2, loader, loader, loss.GraphMSE(),
                  optim.Adam(fsrcnn.get_model().parameters()),
                  stop.NoCondition(), device)
